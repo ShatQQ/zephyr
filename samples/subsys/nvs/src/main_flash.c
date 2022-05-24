@@ -38,18 +38,17 @@
  */
 
 
-#include <zephyr/kernel.h>
+#include <zephyr/zephyr.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/device.h>
 #include <string.h>
 #include <zephyr/drivers/flash.h>
 #include <zephyr/storage/flash_map.h>
-#include <zephyr/drivers/eeprom.h>
 #include <zephyr/fs/nvs.h>
 
 static struct nvs_fs fs;
 
-#define STORAGE_NODE_LABEL nvs_eeprom_partition
+#define STORAGE_NODE_LABEL mem_partition_1
 
 /* 1000 msec = 1 sec */
 #define SLEEP_TIME      100
@@ -63,18 +62,10 @@ static struct nvs_fs fs;
 #define STRING_ID 4
 #define LONG_ID 5
 
-
-static int nvs_eeprom_erase(const struct device *dev, off_t offset, size_t size)
-{
-	uint8_t data[512] = {0};
-	memset(data, 0xFF , size);
-	return eeprom_write(dev, offset, data, size);
-}
-
-static const struct nvs_storage_operations operations = {
-	.write = eeprom_write,
-	.read = eeprom_read,
-	.erase = nvs_eeprom_erase
+static const struct nvs_storage_operations flash_operations = {
+	.write = flash_write,
+	.read = flash_read,
+	.erase = flash_erase
 };
 
 void main(void)
@@ -83,27 +74,28 @@ void main(void)
 	char buf[16];
 	uint8_t key[8], longarray[128];
 	uint32_t reboot_counter = 0U, reboot_counter_his;
-	struct nvs_storage_parameters eeprom_parameters;
+	struct flash_pages_info info;
 
 	/* define the nvs file system by settings with:
 	 *	sector_size equal to the pagesize,
 	 *	3 sectors
-	 *	starting at NVS_PARTITION_OFFSET
+	 *	starting at FLASH_AREA_OFFSET(storage)
 	 */
-	fs.storage_device = DEVICE_DT_GET(DT_GPARENT(DT_NODELABEL(STORAGE_NODE_LABEL)));
+	fs.storage_device = FLASH_AREA_DEVICE(STORAGE_NODE_LABEL);
 	if (!device_is_ready(fs.storage_device)) {
 		printk("Flash device %s is not ready\n", fs.storage_device->name);
 		return;
 	}
-	fs.offset = 0;
-	fs.sector_size = 256;
+	fs.offset = FLASH_AREA_OFFSET(STORAGE_NODE_LABEL);
+	rc = flash_get_page_info_by_offs(fs.storage_device, fs.offset, &info);
+	if (rc) {
+		printk("Unable to get page info\n");
+		return;
+	}
+	fs.sector_size = info.size;
 	fs.sector_count = 3U;
 
-	eeprom_parameters.write_block_size = 1;
-	eeprom_parameters.erase_value = 0xFF;
-
-	fs.storage_operations = &operations;
-	fs.storage_parameters = &eeprom_parameters;
+	fs.storage_operations = &flash_operations;
 
 	rc = nvs_mount(&fs);
 	if (rc) {

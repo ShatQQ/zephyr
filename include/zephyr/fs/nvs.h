@@ -32,6 +32,27 @@ extern "C" {
  */
 
 /**
+ * @brief Non-volatile storage file system operations api.
+ * This structure is used to map underling storage operations to the file system.
+ */
+struct nvs_storage_operations {
+	int (*read)(const struct device *dev, off_t offset, void *data, size_t len);
+	int (*write)(const struct device *dev, off_t offset, const void *data, size_t len);
+	int (*erase)(const struct device *dev, off_t offset, size_t size);
+};
+
+/**
+ * @brief Storage parameter structure
+ * These informations are needed by the nvs from the storage device,
+ * so the nvs can work with the parameters.
+ */
+struct nvs_storage_parameters {
+	size_t write_block_size;
+	uint8_t erase_value; /* Byte value of erased storage device */
+	size_t page_size;
+};
+
+/**
  * @brief Non-volatile Storage File system structure
  *
  * @param offset File system offset in flash
@@ -42,8 +63,9 @@ extern "C" {
  * @param sector_count Number of sectors in the file systems
  * @param ready Flag indicating if the filesystem is initialized
  * @param nvs_lock Mutex
- * @param flash_device Flash Device runtime structure
- * @param flash_parameters Flash memory parameters structure
+ * @param storage_device Storage device runtime structure
+ * @param storage_operations Storage operations api structure
+ * @param storage_parameters Memory storage parameters structure
  */
 struct nvs_fs {
 	off_t offset;
@@ -53,8 +75,9 @@ struct nvs_fs {
 	uint16_t sector_count;
 	bool ready;
 	struct k_mutex nvs_lock;
-	const struct device *flash_device;
-	const struct flash_parameters *flash_parameters;
+	const struct device *storage_device;
+	const struct nvs_storage_operations *storage_operations;
+	const struct nvs_storage_parameters *storage_parameters;
 #if CONFIG_NVS_LOOKUP_CACHE
 	uint32_t lookup_cache[CONFIG_NVS_LOOKUP_CACHE_SIZE];
 #endif
@@ -182,8 +205,8 @@ ssize_t nvs_calc_free_space(struct nvs_fs *fs);
  */
 __deprecated static inline int nvs_init(struct nvs_fs *fs, const char *dev_name)
 {
-	fs->flash_device = device_get_binding(dev_name);
-	if (fs->flash_device == NULL) {
+	fs->storage_device = device_get_binding(dev_name);
+	if (fs->storage_device == NULL) {
 		return -ENODEV;
 	}
 
