@@ -11,6 +11,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/toolchain.h>
+#include <zephyr/devicetree.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -214,11 +215,82 @@ __deprecated static inline int nvs_init(struct nvs_fs *fs, const char *dev_name)
 }
 
 /**
- * @}
+ * Get device pointer for device the area/partition resides on
+ *
+ * @param label partition node label
+ *
+ * @return const struct device type pointer
  */
+#define NVS_FS_DEFINE(label) \
+	DT_NODE_FULL_NAME(DT_GPARENT(DT_NODELABEL(label)))
+
+/**
+ * TBD description define for the eeprom
+ *
+ * @param eeprom_partition_label partition node label for a eeprom partition
+ * @param name name of the nvs structure which is created
+ *
+ * @return const struct device type pointer
+ */
+#define NVS_EEPROM_DEFINE(eeprom_partition_label, name, s_size, s_count, e_value) 			\
+	static inline int nvs_eeprom_erase(const struct device *dev, off_t offset, size_t size)		\
+	{												\
+		uint8_t data[s_size] = {0U};								\
+		memset(data, e_value , size);								\
+		return eeprom_write(dev, offset, data, size);						\
+	}												\
+	static const struct nvs_storage_operations nvs_eeprom_##name##_operations = {			\
+		.write = eeprom_write,									\
+		.read = eeprom_read,									\
+		.erase = nvs_eeprom_erase								\
+	};												\
+	static struct nvs_storage_parameters nvs_eeprom_##name##_parameters = {				\
+		.write_block_size = 1U,									\
+		.erase_value = e_value,									\
+		.page_size = s_size									\
+	};												\
+	static struct nvs_fs nvs_fs_##name = {								\
+		.offset = DT_REG_ADDR(DT_NODELABEL(eeprom_partition_label)),				\
+		.sector_size = s_size,									\
+		.sector_count = s_count,								\
+		.storage_device = DEVICE_DT_GET(DT_GPARENT(DT_NODELABEL(eeprom_partition_label))),	\
+		.storage_operations = &nvs_eeprom_##name##_operations,					\
+		.storage_parameters = &nvs_eeprom_##name##_parameters					\
+	};
+
+/**
+ * TBD description define for the flash
+ *
+ * @param eeprom_partition_label partition node label for a eeprom partition
+ * @param name name of the nvs structure which is created
+ *
+ * @return const struct device type pointer
+ */
+#define NVS_FLASH_DEFINE(flash_partition_label, name) 	\
+	static const struct nvs_storage_operations nvs_flash_##name##_operations = {			\
+		.write = flash_write,									\
+		.read = flash_read,									\
+		.erase = flash_erase									\
+	};												\
+	static struct nvs_storage_parameters nvs_flash_##name##_parameters = {				\
+		.write_block_size = 1U,									\
+		.erase_value = e_value									\
+	};												\
+	static struct nvs_fs nvs_fs_##name = {								\
+		.offset = FLASH_AREA_OFFSET(flash_partition_label),					\
+		.sector_size = s_size,									\
+		.sector_count = s_count,								\
+		.storage_device = FLASH_AREA_DEVICE(flash_partition_label),				\
+		.storage_operations = &nvs_eeprom_operations,						\
+		.storage_parameters = &nvs_eeprom_parameters						\
+	};
 
 #ifdef __cplusplus
 }
 #endif
+
+/**
+ * @}
+ */
 
 #endif /* ZEPHYR_INCLUDE_FS_NVS_H_ */
