@@ -1,20 +1,19 @@
 /*
- * Copyright (c) 2022 Nordic Semiconductor ASA
+ * Copyright (c) 2022 Baumer (www.baumer.com)
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
-&flash0 {
-	erase-block-size = <0x400>;
+&sim_flash {
+	erase-value = < 0x00 >;
 };
 
-&eeprom0 {
+&eeprom1 {
 	partitions {
 		#address-cells = <1>;
 		#size-cells = <1>;
 		eeprom_nvs_partition: partition@0 {
-			reg = <0x00000000 0x00001400>;
+			reg = <0x00000000 0x00000A00>;
 		};
 	};
 };
-

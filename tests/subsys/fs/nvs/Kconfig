@@ -1,0 +1,12 @@
+# Copyright (c) 2022 Baumer (www.baumer.com)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "NVS eeprom test switch"
+
+source "Kconfig.zephyr"
+
+config NVS_TEST_EEPROM
+	bool "Select to test additional custom filesystem configurations"
+	help Due to eeprom emulation the zephyr internal CONFIG_EEPROM / CONFIG_FLASH switch
+	can not be used therfore this switch is used for testing.

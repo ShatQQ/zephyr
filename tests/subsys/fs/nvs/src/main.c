@@ -19,22 +19,62 @@
 #include <string.h>
 #include <zephyr/ztest.h>
 
+#ifdef CONFIG_FLASH
 #include <zephyr/drivers/flash.h>
 #include <zephyr/storage/flash_map.h>
+#endif
+#ifdef CONFIG_EEPROM
+#include <zephyr/drivers/eeprom.h>
+#include <zephyr/device.h>
+#endif
 #include <zephyr/stats/stats.h>
 #include <zephyr/sys/crc.h>
 #include <zephyr/fs/nvs.h>
 #include "nvs_priv.h"
 
-#define TEST_NVS_FLASH_AREA		storage_partition
-#define TEST_NVS_FLASH_AREA_OFFSET	FIXED_PARTITION_OFFSET(TEST_NVS_FLASH_AREA)
-#define TEST_NVS_FLASH_AREA_ID		FIXED_PARTITION_ID(TEST_NVS_FLASH_AREA)
-#define TEST_NVS_FLASH_AREA_DEV \
-	DEVICE_DT_GET(DT_MTD_FROM_FIXED_PARTITION(DT_NODELABEL(TEST_NVS_FLASH_AREA)))
 #define TEST_DATA_ID			1
 #define TEST_SECTOR_COUNT		5U
 
+#ifdef CONFIG_NVS_TEST_EEPROM
+#define TEST_SIM_STATS			"eeprom_sim_stats"
+#define TEST_SIM_THRESHOLDS		"eeprom_sim_thresholds"
+#define TEST_NVS_EEPROM_LABEL		eeprom_nvs_partition
+#define TEST_NVS_EEPROM_OFFSET		DT_REG_ADDR(DT_NODELABEL(TEST_NVS_EEPROM_LABEL))
+#define TEST_NVS_EEPROM_DEV_NODE	\
+	DT_GPARENT(DT_NODELABEL(TEST_NVS_EEPROM_LABEL))
+#define TEST_NVS_EEPROM_ERASE_VALUE	0xFF
+#define TEST_NVS_EEPROM_SECTOR_SIZE	512
+
+static const struct device *eeprom_dev = DEVICE_DT_GET(TEST_NVS_EEPROM_DEV_NODE);
+
+static inline int nvs_eeprom_erase(const struct device *dev, off_t offset, size_t size)		\
+{												\
+	uint8_t data[TEST_NVS_EEPROM_SECTOR_SIZE] = {0U};								\
+	memset(data, TEST_NVS_EEPROM_ERASE_VALUE, size);					\
+	return eeprom_write(dev, offset, data, size);						\
+}
+
+static const struct nvs_storage_operations eeprom_operations = {
+	.write = eeprom_write,
+	.read = eeprom_read,
+	.erase = nvs_eeprom_erase
+};
+#else
+#define TEST_SIM_STATS			"flash_sim_stats"
+#define TEST_SIM_THRESHOLDS		"flash_sim_thresholds"
+#define TEST_NVS_FLASH_AREA		storage
+#define TEST_NVS_FLASH_OFFSET		FLASH_AREA_OFFSET(TEST_NVS_FLASH_AREA)
+#define TEST_NVS_FLASH_DEV_NODE	\
+	DT_MTD_FROM_FIXED_PARTITION(DT_NODE_BY_FIXED_PARTITION_LABEL(TEST_NVS_FLASH_AREA))
+
 static const struct device *const flash_dev = TEST_NVS_FLASH_AREA_DEV;
+
+static const struct nvs_storage_operations flash_operations = {
+	.write = flash_write,
+	.read = flash_read,
+	.erase = flash_erase
+};
+#endif
 
 struct nvs_fixture {
 	struct nvs_fs fs;
@@ -42,12 +82,14 @@ struct nvs_fixture {
 	struct stats_hdr *sim_thresholds;
 };
 
+#ifndef CONFIG_NVS_TEST_EEPROM
 static void *setup(void)
 {
 	int err;
 	const struct flash_area *fa;
 	struct flash_pages_info info;
 	static struct nvs_fixture fixture;
+	static struct nvs_storage_parameters flash_storage_parameters;
 
 	__ASSERT_NO_MSG(device_is_ready(flash_dev));
 
@@ -61,17 +103,46 @@ static void *setup(void)
 
 	fixture.fs.sector_size = info.size;
 	fixture.fs.sector_count = TEST_SECTOR_COUNT;
-	fixture.fs.flash_device = flash_area_get_device(fa);
+	fixture.fs.storage_device = flash_area_get_device(fa);
+	fixture.fs.storage_operations = &flash_operations;
+
+	flash_storage_parameters.erase_value = flash_get_parameters(fixture.fs.storage_device)->erase_value;
+	flash_storage_parameters.write_block_size = flash_get_parameters(fixture.fs.storage_device)->write_block_size;
+	flash_storage_parameters.page_size = info.size;
+	fixture.fs.storage_parameters = &flash_storage_parameters;
 
 	return &fixture;
 }
+#else
+static void *setup(void)
+{
+	static struct nvs_fixture fixture;
+	static struct nvs_storage_parameters eeprom_storage_parameters;
+
+	__ASSERT_NO_MSG(device_is_ready(eeprom_dev));
+
+	fixture.fs.offset = TEST_NVS_EEPROM_OFFSET;
+
+	fixture.fs.sector_size = TEST_NVS_EEPROM_SECTOR_SIZE;
+	fixture.fs.sector_count = TEST_SECTOR_COUNT;
+	fixture.fs.storage_device = DEVICE_DT_GET(TEST_NVS_EEPROM_DEV_NODE);
+	fixture.fs.storage_operations = &eeprom_operations;
+
+	eeprom_storage_parameters.erase_value = TEST_NVS_EEPROM_ERASE_VALUE;
+	eeprom_storage_parameters.write_block_size = 1U;
+	eeprom_storage_parameters.page_size = TEST_NVS_EEPROM_SECTOR_SIZE;
+	fixture.fs.storage_parameters = &eeprom_storage_parameters;
+
+	return &fixture;
+}
+#endif
 
 static void before(void *data)
 {
 	struct nvs_fixture *fixture = (struct nvs_fixture *)data;
 
-	fixture->sim_stats = stats_group_find("flash_sim_stats");
-	fixture->sim_thresholds = stats_group_find("flash_sim_thresholds");
+	fixture->sim_stats = stats_group_find(TEST_SIM_STATS);
+	fixture->sim_thresholds = stats_group_find(TEST_SIM_THRESHOLDS);
 
 	/* Verify if NVS is initialized. */
 	if (fixture->fs.ready) {
@@ -652,27 +723,27 @@ ZTEST_F(nvs, test_nvs_gc_corrupt_close_ate)
 			      offsetof(struct nvs_ate, crc8));
 
 	/* Mark sector 0 as closed */
-	err = flash_write(fixture->fs.flash_device, fixture->fs.offset + fixture->fs.sector_size -
+	err = fixture->fs.storage_operations->write(fixture->fs.storage_device, fixture->fs.offset + fixture->fs.sector_size -
 			  sizeof(struct nvs_ate), &close_ate,
 			  sizeof(close_ate));
-	zassert_true(err == 0,  "flash_write failed: %d", err);
+	zassert_true(err == 0,  "storage_write failed: %d", err);
 
 	/* Write valid ate at -6 */
-	err = flash_write(fixture->fs.flash_device, fixture->fs.offset + fixture->fs.sector_size -
+	err = fixture->fs.storage_operations->write(fixture->fs.storage_device, fixture->fs.offset + fixture->fs.sector_size -
 			  sizeof(struct nvs_ate) * 6, &ate, sizeof(ate));
-	zassert_true(err == 0,  "flash_write failed: %d", err);
+	zassert_true(err == 0,  "storage_write failed: %d", err);
 
 	/* Write data for previous ate */
 	data = 0xaa55aa55;
-	err = flash_write(fixture->fs.flash_device, fixture->fs.offset, &data, sizeof(data));
-	zassert_true(err == 0,  "flash_write failed: %d", err);
+	err = fixture->fs.storage_operations->write(fixture->fs.storage_device, fixture->fs.offset, &data, sizeof(data));
+	zassert_true(err == 0,  "storage_write failed: %d", err);
 
 	/* Mark sector 1 as closed */
-	err = flash_write(fixture->fs.flash_device,
+	err = fixture->fs.storage_operations->write(fixture->fs.storage_device,
 			  fixture->fs.offset + (2 * fixture->fs.sector_size) -
 			  sizeof(struct nvs_ate), &close_ate,
 			  sizeof(close_ate));
-	zassert_true(err == 0,  "flash_write failed: %d", err);
+	zassert_true(err == 0,  "storage_write failed: %d", err);
 
 	fixture->fs.sector_count = 3;
 
@@ -706,23 +777,23 @@ ZTEST_F(nvs, test_nvs_gc_corrupt_ate)
 	corrupt_ate.crc8 = 0xff; /* Incorrect crc8 */
 
 	/* Mark sector 0 as closed */
-	err = flash_write(fixture->fs.flash_device, fixture->fs.offset + fixture->fs.sector_size -
+	err = fixture->fs.storage_operations->write(fixture->fs.storage_device, fixture->fs.offset + fixture->fs.sector_size -
 			  sizeof(struct nvs_ate), &close_ate,
 			  sizeof(close_ate));
-	zassert_true(err == 0,  "flash_write failed: %d", err);
+	zassert_true(err == 0,  "storage_write failed: %d", err);
 
 	/* Write a corrupt ate */
-	err = flash_write(fixture->fs.flash_device,
+	err = fixture->fs.storage_operations->write(fixture->fs.storage_device,
 			  fixture->fs.offset + (fixture->fs.sector_size / 2),
 			  &corrupt_ate, sizeof(corrupt_ate));
-	zassert_true(err == 0,  "flash_write failed: %d", err);
+	zassert_true(err == 0,  "storage_write failed: %d", err);
 
 	/* Mark sector 1 as closed */
-	err = flash_write(fixture->fs.flash_device,
+	err = fixture->fs.storage_operations->write(fixture->fs.storage_device,
 			  fixture->fs.offset + (2 * fixture->fs.sector_size) -
 			  sizeof(struct nvs_ate), &close_ate,
 			  sizeof(close_ate));
-	zassert_true(err == 0,  "flash_write failed: %d", err);
+	zassert_true(err == 0,  "storage_write failed: %d", err);
 
 	fixture->fs.sector_count = 3;
 

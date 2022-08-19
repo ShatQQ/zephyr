@@ -1,11 +1,15 @@
 common:
   tags: nvs
 tests:
-  filesystem.nvs:
+  filesystem.nvs.flash:
     platform_allow: qemu_x86
-  filesystem.nvs_0x00:
+  filesystem.nvs.eeprom:
+    extra_args: CONF_FILE="prj_nvs_eeprom.conf"
+    platform_allow: qemu_x86
+  filesystem.nvs_0x00.flash:
     extra_args: DTC_OVERLAY_FILE=boards/qemu_x86_ev_0x00.overlay
     platform_allow: qemu_x86
-  filesystem.nvs_cache:
-    extra_args: CONFIG_NVS_LOOKUP_CACHE=y CONFIG_NVS_LOOKUP_CACHE_SIZE=64
+  filesystem.nvs_cache.flash:
+    extra_args: CONFIG_NVS_LOOKUP_CACHE=y
+                CONFIG_NVS_LOOKUP_CACHE_SIZE=64
     platform_allow: native_posix
