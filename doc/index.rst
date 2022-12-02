@@ -114,6 +114,7 @@ Sections
    samples/index.rst
    boards/index.rst
    releases/index.rst
+   reqtrace/index.rst
 
 Indices and Tables
 ******************
