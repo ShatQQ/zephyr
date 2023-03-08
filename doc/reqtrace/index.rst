@@ -3,52 +3,24 @@
 Req trace
 #############
 
-.. item:: SWRQ-1
-    :value: 40
-    :status: Approved
-    :nocaptions:
-
-    SW 1
-
-.. item:: SWRQ-2
-    :value: 45
-    :status: Approved
-    :nocaptions:
-
-    SW 2
-
-.. item:: SWTE-1
-    :value: 45
-    :status: Approved
-    :nocaptions:
-
-    Test 1
-
-.. item:: SWTE-2
-    :value: 45
-    :status: Approved
-    :nocaptions:
-
-    Test 2
-
-
-.. item-link::
-    :source: SWRQ-\d
-    :target: SWTE-[12]
-    :type: validates
-    :nooverwrite:
-
-
-.. item-matrix:: Trace software Requirements to test
-    :source: SWRQ
-    :target: SWTE
-    :sourcetitle: Software req
-    :targettitle: Test req
-    :nocaptions:
-    :stats:
+Welcome to Traceability's documentation!
+========================================
 
 .. toctree::
-   :maxdepth: 1
-   :glob:
-   :reversed:
+   :maxdepth: 2
+   :caption: Contents:
 
+   SRS.rst
+   tests.rst
+
+
+
+.. item-matrix:: Requirements to test case description traceability
+    :source: ZEP-*
+    :target: test_.*
+    :sourcetitle: Software requirements
+    :targettitle: Integration and unit test cases
+    :type: validated_by
+    :group: bottom
+    :nocaptions:
+    :stats:
