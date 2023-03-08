@@ -275,7 +275,7 @@ TAB_SIZE               = 8
 ALIASES                = "rst=\verbatim embed:rst:leading-asterisk" \
                          endrst=\endverbatim \
                          "kconfig{1}=\htmlonly <code>\1</code> \endhtmlonly \xmlonly <verbatim>embed:rst:inline :kconfig:option:`\1`</verbatim> \endxmlonly" \
-                         "req{1}=\ref ZEPH_\1 \"ZEPH-\1\"" \
+                         "req{1}=\ref ZEP_\1 \"ZEP-\1\"" \
                          "satisfy{1}=\xrefitem satisfy \"Satisfies requirement\" \"Requirement Implementation\" \1" \
                          "verify{1}=\xrefitem verify \"Verifies requirement\" \"Requirement Verification\" \1" \
                          "funcprops=\par \"Function properties (list may not be complete)\"" \
@@ -911,6 +911,7 @@ WARN_LOGFILE           =
 
 INPUT                  = @ZEPHYR_BASE@/doc/_doxygen/mainpage.md \
                          @ZEPHYR_BASE@/doc/_doxygen/groups.dox \
+                         @ZEPHYR_BASE@/doc/_doxygen/requirements.dox \
                          @ZEPHYR_BASE@/kernel/include/kernel_arch_interface.h \
                          @ZEPHYR_BASE@/include/ \
                          @ZEPHYR_BASE@/lib/libc/minimal/include/ \

@@ -321,6 +321,33 @@ linkcheck_timeout = 30
 linkcheck_workers = 10
 linkcheck_anchors = False
 
+# -- traceability options-------------------------------------------------
+
+
+traceability_relationships = {
+    'trace': 'traced_by',
+    'depends_on': 'impacts_on',
+    'fulfills': 'fulfilled_by',
+    'implements': 'implemented_by',
+    'validates': 'validated_by',
+    'ext_toolname': ''
+}
+
+traceability_render_relationship_per_item = True
+
+traceability_relationship_to_string = {
+    'trace': 'Traces',
+    'traced_by': 'Traced by',
+    'depends_on': 'Depends on',
+    'impacts_on': 'Impacts on',
+    'fulfills': 'Fulfills',
+    'fulfilled_by': 'Fulfilled by',
+    'implements': 'Implements',
+    'implemented_by': 'Implemented by',
+    'validates': 'Validates',
+    'validated_by': 'Validated by',
+    'ext_toolname': 'Reference to toolname'
+}
 
 def setup(app):
     # theme customizations
