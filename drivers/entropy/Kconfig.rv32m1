@@ -5,7 +5,7 @@
 
 config ENTROPY_RV32M1_TRNG
 	bool "RV32M1 TRNG driver"
-	default y
+	default n
 	depends on DT_HAS_OPENISA_RV32M1_TRNG_ENABLED
 	select ENTROPY_HAS_DRIVER
 	help
