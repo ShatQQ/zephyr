@@ -32,7 +32,9 @@
 #include <stdbool.h>
 #include <zephyr/debug/gcov.h>
 #include <kswap.h>
+#if defined(CONFIG_TIMING_FUNCTIONS)
 #include <zephyr/timing/timing.h>
+#endif
 #include <zephyr/logging/log.h>
 #include <zephyr/pm/device_runtime.h>
 LOG_MODULE_REGISTER(os, CONFIG_KERNEL_LOG_LEVEL);

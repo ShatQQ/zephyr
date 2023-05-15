@@ -17,7 +17,9 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/sys/math_extras.h>
+#if defined(CONFIG_TIMING_FUNCTIONS)
 #include <zephyr/timing/timing.h>
+#endif
 #include <zephyr/sys/util.h>
 
 LOG_MODULE_DECLARE(os, CONFIG_KERNEL_LOG_LEVEL);
