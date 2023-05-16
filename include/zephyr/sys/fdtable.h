@@ -9,7 +9,11 @@
 #include <stdarg.h>
 #include <sys/types.h>
 /* FIXME: For native_posix ssize_t, off_t. */
+
+#if defined(FILE_SYSTEM)
 #include <zephyr/fs/fs.h>
+#endif
+
 #include <zephyr/sys/mutex.h>
 
 #ifdef __cplusplus
