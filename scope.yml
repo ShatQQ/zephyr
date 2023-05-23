@@ -1,0 +1,15 @@
+# This file contains information on different scopes from different subgroups which
+# need a subset of the zephyr code to work on or run specifc checks and tests on it.
+#
+#
+# File format
+# ############
+
+Safety:
+  group: safety
+  files:
+    - kernel/
+    - include/zephyr/kernel/
+    - include/zephyr/kernel*.h
+  labels:
+    - "Safety"
