@@ -1,0 +1,5 @@
+{
+    "script": "misra.py","args": [
+        "--rule-texts=$ZEPHYR_BASE/guidelines.txt"
+        ]
+}
