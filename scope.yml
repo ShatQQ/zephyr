@@ -6,7 +6,6 @@
 # ############
 
 Safety:
-  group: safety
   files:
     - kernel/
     - include/zephyr/kernel/

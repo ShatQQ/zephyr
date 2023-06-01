@@ -8,7 +8,7 @@ Lists scopes for different areas of the Zephyr project and
 
 The comment at the top of scope.yml in Zephyr documents the file format.
 
-    ./get_scope.py path --help
+    ./identify_scopes.py path --help
 
 This executable doubles as a Python library. Identifiers not prefixed with '_'
 are part of the library API. The library documentation can be viewed with this
@@ -40,7 +40,7 @@ def _main():
     args = _parse_args()
     try:
         args.cmd_fn(Scope(args.scopes), args)
-    except (ScopeError) as e:
+    except (ScopeError, GitError) as e:
         _serr(e)
 
 
@@ -71,18 +71,18 @@ def _parse_args():
         nargs="*",
         help="Path to list scope for")
     id_parser.set_defaults(cmd_fn=Scope._path_cmd)
-#
-#    list_parser = subparsers.add_parser(
-#        "list",
-#        help="List files in scope")
-#    list_parser.add_argument(
-#        "scope",
-#        metavar="SCOPE",
-#        nargs="?",
-#        help="Name of scope to list files in. If not specified, all "
-#             "non-orphaned files are listed (all files that do not appear in "
-#             "any scope).")
-#    list_parser.set_defaults(cmd_fn=Maintainers._list_cmd)
+
+    list_parser = subparsers.add_parser(
+        "list",
+        help="List files in scope")
+    list_parser.add_argument(
+        "scope",
+        metavar="SCOPE",
+        nargs="?",
+        help="Name of scope to list files in. If not specified, all "
+             "non-orphaned files are listed (all files that do not appear in "
+             "any scope).")
+    list_parser.set_defaults(cmd_fn=Scope._list_cmd)
 
     args = parser.parse_args()
     if not hasattr(args, "cmd_fn"):
@@ -122,7 +122,8 @@ class Scope:
             the top-level directory of the Git repository is used, and must
             exist.
         """
-        self._toplevel = pathlib.Path("../")
+        self._toplevel = pathlib.Path(_git("rev-parse", "--show-toplevel"))
+        print(self._toplevel)
 
         if filename is None:
             self.filename = self._toplevel / "scope.yml"
@@ -131,11 +132,15 @@ class Scope:
 
         self.scopes = {}
         for scope_name, scope_dict in _load_scopes(self.filename).items():
+            scope = Scope()
+            scope.name = scope_name
             print(scope_name)
-            print(scope_dict.get("group"))
             print(scope_dict.get("files", []))
             print(scope_dict.get("labels", []))
             print(scope_dict.get("description"))
+            print(scope_dict)
+
+            self.scopes[scope_name] = area
 
     def __repr__(self):
         return "<Scope {}>".format(self.name)
@@ -148,6 +153,11 @@ class Scope:
         # 'path' subcommand implementation
 
         print("Im the path command")
+
+    def _list_cmd(self, args):
+        # 'path' subcommand implementation
+
+        print("Im the list command")
 
 
 def _load_scopes(path):
@@ -162,8 +172,37 @@ def _load_scopes(path):
             raise ScopeError("{}: YAML error: {}".format(path, e))
         return yaml
 
+
+def _git(*args):
+    # Helper for running a Git command. Returns the rstrip()ed stdout output.
+    # Called like git("diff"). Exits with SystemError (raised by sys.exit()) on
+    # errors.
+
+    git_cmd = ("git",) + args
+    git_cmd_s = " ".join(shlex.quote(word) for word in git_cmd)  # For errors
+
+    try:
+        git_process = subprocess.Popen(
+            git_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except FileNotFoundError:
+        _giterr("git executable not found (when running '{}'). Check that "
+                "it's in listed in the PATH environment variable"
+                .format(git_cmd_s))
+    except OSError as e:
+        _giterr("error running '{}': {}".format(git_cmd_s, e))
+
+    stdout, stderr = git_process.communicate()
+    if git_process.returncode:
+        _giterr("error running '{}'\n\nstdout:\n{}\nstderr:\n{}".format(
+            git_cmd_s, stdout.decode("utf-8"), stderr.decode("utf-8")))
+
+    return stdout.decode("utf-8").rstrip()
+
 def _err(msg):
     raise ScopeError(msg)
+
+def _giterr(msg):
+    raise GitError(msg)
 
 
 
@@ -175,6 +214,9 @@ def _serr(msg):
 
 class ScopeError(Exception):
     "Exception raised for scope.yml-related errors"
+
+class GitError(Exception):
+    "Exception raised for Git-related errors"
 
 
 
