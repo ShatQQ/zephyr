@@ -8,7 +8,7 @@ Lists scopes for different areas of the Zephyr project and
 
 The comment at the top of scope.yml in Zephyr documents the file format.
 
-    ./identify_scopes.py path --help
+    ./identify_scopes.py list --help
 
 This executable doubles as a Python library. Identifiers not prefixed with '_'
 are part of the library API. The library documentation can be viewed with this
@@ -18,8 +18,6 @@ command:
 """
 
 import argparse
-import operator
-import os
 import pathlib
 import re
 import shlex
@@ -39,7 +37,7 @@ def _main():
 
     args = _parse_args()
     try:
-        args.cmd_fn(Scope(args.scopes), args)
+        args.cmd_fn(Scopes(args.scopes), args)
     except (ScopeError, GitError) as e:
         _serr(e)
 
@@ -62,16 +60,6 @@ def _parse_args():
     subparsers = parser.add_subparsers(
         help="Available commands (each has a separate --help text)")
 
-    id_parser = subparsers.add_parser(
-        "area",
-        help="List area(s) for paths")
-    id_parser.add_argument(
-        "paths",
-        metavar="PATH",
-        nargs="*",
-        help="Path to list scope for")
-    id_parser.set_defaults(cmd_fn=Scope._path_cmd)
-
     list_parser = subparsers.add_parser(
         "list",
         help="List files in scope")
@@ -82,7 +70,7 @@ def _parse_args():
         help="Name of scope to list files in. If not specified, all "
              "non-orphaned files are listed (all files that do not appear in "
              "any scope).")
-    list_parser.set_defaults(cmd_fn=Scope._list_cmd)
+    list_parser.set_defaults(cmd_fn=Scopes._list_cmd)
 
     args = parser.parse_args()
     if not hasattr(args, "cmd_fn"):
@@ -92,7 +80,7 @@ def _parse_args():
     return args
 
 
-class Scope:
+class Scopes:
     """
     Represents an entry for an scope in scope.yml.
 
@@ -115,15 +103,14 @@ class Scope:
     """
     def __init__(self, filename=None):
         """
-        Creates a scope instance.
+        Creates a scopes instance.
 
         filename (default: None):
-            Path to the maintainers file to parse. If None, scope.yml in
+            Path to the scope file to parse. If None, scope.yml in
             the top-level directory of the Git repository is used, and must
             exist.
         """
         self._toplevel = pathlib.Path(_git("rev-parse", "--show-toplevel"))
-        print(self._toplevel)
 
         if filename is None:
             self.filename = self._toplevel / "scope.yml"
@@ -132,13 +119,23 @@ class Scope:
 
         self.scopes = {}
         for scope_name, scope_dict in _load_scopes(self.filename).items():
-            scope = Scope()
-            scope.name = scope_name
-            print(scope_name)
-            print(scope_dict.get("files", []))
-            print(scope_dict.get("labels", []))
-            print(scope_dict.get("description"))
-            print(scope_dict)
+            area = Area()
+            area.name = scope_name
+            area.files = scope_dict.get("files", [])
+            area.labels = scope_dict.get("labels", [])
+            area.description = scope_dict.get("description")
+
+            # area._match_fn(path) tests if the path matches files and/or
+            # files-regex
+            area._match_fn = \
+                _get_match_fn(scope_dict.get("files"),
+                              scope_dict.get("files-regex"))
+
+            # Like area._match_fn(path), but for files-exclude and
+            # files-regex-exclude
+            area._exclude_match_fn = \
+                _get_match_fn(scope_dict.get("files-exclude"),
+                              scope_dict.get("files-regex-exclude"))
 
             self.scopes[scope_name] = area
 
@@ -149,16 +146,75 @@ class Scope:
     # Command-line subcommands
     #
 
-    def _path_cmd(self, args):
-        # 'path' subcommand implementation
-
-        print("Im the path command")
-
     def _list_cmd(self, args):
-        # 'path' subcommand implementation
+        # 'list' subcommand implementation
 
-        print("Im the list command")
+        if args.scope is None:
+            # List all files that appear in some area
+            for path in _ls_files():
+                for area in self.scopes.values():
+                    if area._contains(path):
+                        print(path)
+                        break
+        else:
+            # List all files that appear in the given area
+            area = self.scopes.get(args.scope)
+            if area is None:
+                _serr("'{}': no such area defined in '{}'"
+                      .format(args.scope, self.filename))
 
+            for path in _ls_files():
+                if area._contains(path):
+                    print(path)
+
+class Area:
+
+    def _contains(self, path):
+        # Returns True if the area contains 'path', and False otherwise
+
+        return self._match_fn and self._match_fn(path) and not \
+            (self._exclude_match_fn and self._exclude_match_fn(path))
+
+    def __repr__(self):
+        return "<Area {}>".format(self.name)
+
+
+def _get_match_fn(globs, regexes):
+    # Constructs a single regex that tests for matches against the globs in
+    # 'globs' and the regexes in 'regexes'. Parts are joined with '|' (OR).
+    # Returns the search() method of the compiled regex.
+    #
+    # Returns None if there are neither globs nor regexes, which should be
+    # interpreted as no match.
+
+    if not (globs or regexes):
+        return None
+
+    regex = ""
+
+    if globs:
+        glob_regexes = []
+        for glob in globs:
+            # Construct a regex equivalent to the glob
+            glob_regex = glob.replace(".", "\\.").replace("*", "[^/]*") \
+                             .replace("?", "[^/]")
+
+            if not glob.endswith("/"):
+                # Require a full match for globs that don't end in /
+                glob_regex += "$"
+
+            glob_regexes.append(glob_regex)
+
+        # The glob regexes must anchor to the beginning of the path, since we
+        # return search(). (?:) is a non-capturing group.
+        regex += "^(?:{})".format("|".join(glob_regexes))
+
+    if regexes:
+        if regex:
+            regex += "|"
+        regex += "|".join(regexes)
+
+    return re.compile(regex).search
 
 def _load_scopes(path):
     # Returns the parsed contents of the scope file 'filename', also
@@ -172,6 +228,11 @@ def _load_scopes(path):
             raise ScopeError("{}: YAML error: {}".format(path, e))
         return yaml
 
+def _ls_files(path=None):
+    cmd = ["ls-files"]
+    if path is not None:
+        cmd.append(path)
+    return _git(*cmd).splitlines()
 
 def _git(*args):
     # Helper for running a Git command. Returns the rstrip()ed stdout output.
@@ -198,27 +259,19 @@ def _git(*args):
 
     return stdout.decode("utf-8").rstrip()
 
-def _err(msg):
-    raise ScopeError(msg)
-
 def _giterr(msg):
     raise GitError(msg)
 
-
-
 def _serr(msg):
-    # For reporting errors when get_maintainer.py is run as a script.
+    # For reporting errors when identif_scopes.py is run as a script.
     # sys.exit() shouldn't be used otherwise.
     sys.exit("{}: error: {}".format(sys.argv[0], msg))
-
 
 class ScopeError(Exception):
     "Exception raised for scope.yml-related errors"
 
 class GitError(Exception):
     "Exception raised for Git-related errors"
-
-
 
 if __name__ == "__main__":
     _main()
