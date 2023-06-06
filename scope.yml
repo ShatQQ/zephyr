@@ -10,5 +10,9 @@ Safety:
     - kernel/
     - include/zephyr/kernel/
     - include/zephyr/kernel*.h
+  files-exclude:
+    - kernel/smp.c
+    - kernel/CMakeLists.txt
+    - kernel/Kconfig*
   labels:
     - "Safety"
