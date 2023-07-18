@@ -149,12 +149,15 @@ class Scopes:
     def _list_cmd(self, args):
         # 'list' subcommand implementation
 
+        scopelist = []
+
         if args.scope is None:
             # List all files that appear in some area
             for path in _ls_files():
                 for area in self.scopes.values():
                     if area._contains(path):
                         print(path)
+                        scopelist.append(path)
                         break
         else:
             # List all files that appear in the given area
@@ -165,7 +168,10 @@ class Scopes:
 
             for path in _ls_files():
                 if area._contains(path):
+                    scopelist.append(path)
                     print(path)
+
+        return scopelist
 
 class Area:
 
