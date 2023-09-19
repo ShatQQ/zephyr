@@ -1,0 +1,12 @@
+{
+  "analyze": [
+    "--analyzers=cppcheck",
+    "--report-hash=context-free-v2",
+    "--analyzer-config=cppcheck:addons=$ZEPHYR_BASE/guidelines.json",
+    "--verbose=debug"
+  ],
+  "parse": [
+    "--trim-path-prefix",
+    "$PWD"
+  ]
+}
