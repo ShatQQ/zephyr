@@ -10,7 +10,7 @@ message(STATUS "Found eclair_report: ${ECLAIR_REPORT}")
 
 # ECLAIR Settings
 set(ECLAIR_PROJECT_NAME "Zephyr-${BOARD}")
-set(ECLAIR_OUTPUT_DIR "/tmp/eclair_out")
+set(ECLAIR_OUTPUT_DIR ${CMAKE_BINARY_DIR}/sca/eclair_out)
 set(ECLAIR_ECL_DIR "${ZEPHYR_BASE}/cmake/sca/eclair/ECL")
 set(ECLAIR_DIAGNOSTICS_OUTPUT "${ECLAIR_OUTPUT_DIR}/DIAGNOSTIC.txt")
 set(ECLAIR_DATA_DIR "${ECLAIR_OUTPUT_DIR}/data")
