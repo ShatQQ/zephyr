@@ -63,6 +63,16 @@ add_custom_command(
   COMMAND sh -c "ECLAIR_DATA_DIR=${ECLAIR_DATA_DIR} \
   ECLAIR_OUTPUT_DIR=${ECLAIR_OUTPUT_DIR} \
   ECLAIR_PROJECT_ECD=${ECLAIR_PROJECT_ECD} \
+  ECLAIR_metrics_tab=${ECLAIR_metrics_tab} \
+  ECLAIR_reports_tab=${ECLAIR_reports_tab} \
+  ECLAIR_summary_txt=${ECLAIR_summary_txt} \
+  ECLAIR_summary_doc=${ECLAIR_summary_doc} \
+  ECLAIR_summary_odt=${ECLAIR_summary_odt} \
+  ECLAIR_full_txt_areas=${ECLAIR_full_txt_areas} \
+  ECLAIR_full_txt=${ECLAIR_full_txt} \
+  ECLAIR_full_doc_areas=${ECLAIR_full_doc_areas} \
+  ECLAIR_full_doc=${ECLAIR_full_doc} \
+  ECLAIR_full_odt=${ECLAIR_full_odt} \
   ${ECLAIR_REPORT} \
   -eval_file=${ECLAIR_ECL_DIR}/reports.ecl \
   | tee ${ECLAIR_OUTPUT_DIR}/report.log"
@@ -72,3 +82,13 @@ add_custom_command(
 )
 
 unset(ECLAIR_RULES_SET CACHE)
+unset(ECLAIR_metrics_tab CACHE)
+unset(ECLAIR_reports_tab CACHE)
+unset(ECLAIR_summary_txt CACHE)
+unset(ECLAIR_summary_doc CACHE)
+unset(ECLAIR_summary_odt CACHE)
+unset(ECLAIR_full_txt_areas CACHE)
+unset(ECLAIR_full_txt CACHE)
+unset(ECLAIR_full_doc_areas CACHE)
+unset(ECLAIR_full_doc CACHE)
+unset(ECLAIR_full_odt CACHE)
