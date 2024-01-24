@@ -76,6 +76,7 @@ add_custom_command(
   ${ECLAIR_REPORT} \
   -eval_file=${ECLAIR_ECL_DIR}/reports.ecl \
   | tee ${ECLAIR_OUTPUT_DIR}/report.log"
+  COMMAND ${ECLAIR_REPORT} -db=${ECLAIR_PROJECT_ECD} -overall_txt=/dev/stdin
   VERBATIM
   USES_TERMINAL
   COMMAND_EXPAND_LISTS
