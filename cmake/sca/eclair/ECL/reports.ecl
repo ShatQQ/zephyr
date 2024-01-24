@@ -37,21 +37,33 @@ loading()
 map_strings("load_ecb", dir_entries(data_dir))
 loaded()
 
-if(string_equal(or(getenv("TEXTUAL_REPORTS"),"false"),"true")
-   eval_file("report__textual.ecl"))
+if(string_equal(or(getenv("ECLAIR_metrics_tab"),"false"),"true")
+   metrics_tab(join_paths(output_dir,"metrics")))
 
+if(string_equal(or(getenv("ECLAIR_reports_tab"),"false"),"true")
+   reports_tab(join_paths(output_dir,"reports")))
 
-# Output report summaries in ODT format.
-#-summary_odt=join_paths(output_dir,"odt")
-# Output report summaries in ODT format.
-#-summary_doc=join_paths(output_dir,"doc")
-# Output report summaries in pure text format.
-#-summary_txt=join_paths(output_dir,"txt")
-# Output full report in pure text format.
-#-full_txt=join_paths(output_dir,"txt")
-# Output metrics for use with spreadsheet applications (if enabled).
-#-metrics_tab=join_paths(output_dir,"metrics")
-# Output reports for use with spreadsheet applications
-#-reports_tab=join_paths(output_dir,"reports")
+if(string_equal(or(getenv("ECLAIR_summary_txt"),"false"),"true")
+   summary_txt(join_paths(output_dir,"summary_txt")))
+
+if(string_equal(or(getenv("ECLAIR_summary_doc"),"false"),"true")
+   summary_doc(join_paths(output_dir,"summary_doc")))
+
+if(string_equal(or(getenv("ECLAIR_summary_odt"),"false"),"true")
+   summary_odt(join_paths(output_dir,"summary_odt")))
+
+if(string_equal(or(getenv("ECLAIR_full_txt_areas"),"true"),"true")
+   setq(report_areas,"areas"),
+   setq(report_areas,"first_area"))
+if(string_equal(or(getenv("ECLAIR_full_txt"),"false"),"true")
+   full_txt(join_paths(output_dir,"txt")))
+
+if(string_equal(or(getenv("ECLAIR_full_doc_areas"),"false"),"true")
+   setq(report_areas,"areas"),
+   setq(report_areas,"first_area"))
+if(string_equal(or(getenv("ECLAIR_full_doc"),"false"),"true")
+   full_doc(join_paths(output_dir,"doc")))
+if(string_equal(or(getenv("ECLAIR_full_odt"),"false"),"true")
+   full_odt(join_paths(output_dir,"odt")))
 
 server("changed")
