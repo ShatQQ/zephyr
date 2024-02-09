@@ -34,49 +34,47 @@ message(STATUS "ECLAIR ECB files have been written to: ${ECLAIR_DATA_DIR}")
 message(STATUS "ECLAIR BUILD DIR is: ${ECLAIR_BUILD_DIR}")
 
 add_custom_target(eclair ALL
-  COMMAND sh -c "ECLAIR_PROJECT_NAME=${ECLAIR_PROJECT_NAME} \
-    ECLAIR_PROJECT_ROOT=${ZEPHYR_BASE} \
-    ECLAIR_DIAGNOSTICS_OUTPUT=${ECLAIR_DIAGNOSTICS_OUTPUT} \
-    ECLAIR_DATA_DIR=${ECLAIR_DATA_DIR} \
-    ECLAIR_RULES_SET=${ECLAIR_RULES_SET} \
-    CC_ALIASES=\"${CC_ALIASES}\" \
-    CXX_ALIASES=\"${CXX_ALIASES}\" \
-    AS_ALIASES=\"${AS_ALIASES}\" \
-    LD_ALIASES=\"${LD_ALIASES}\" \
-    AR_ALIASES=\"${AR_ALIASES}\" \
-    ${ECLAIR_ENV} \
-    -verbose \
-    -eval_file=${ECLAIR_ECL_DIR}/analysis.ecl \
-    -- west build -p always \
-                  -b ${BOARD} \
-                  --build-dir ${ECLAIR_BUILD_DIR} \
-                  ${APPLICATION_SOURCE_DIR} \
-                  | tee ${ECLAIR_OUTPUT_DIR}/analysis.log"
-  BYPRODUCTS ${ECLAIR_OUTPUT_DIR}/analysis.log ${ECLAIR_OUTPUT_DIR}/report.log
-  VERBATIM
-  USES_TERMINAL
-  COMMAND_EXPAND_LISTS
-)
-
-add_custom_command(
-  TARGET eclair POST_BUILD
-  COMMAND sh -c "ECLAIR_DATA_DIR=${ECLAIR_DATA_DIR} \
-  ECLAIR_OUTPUT_DIR=${ECLAIR_OUTPUT_DIR} \
-  ECLAIR_PROJECT_ECD=${ECLAIR_PROJECT_ECD} \
-  ECLAIR_metrics_tab=${ECLAIR_metrics_tab} \
-  ECLAIR_reports_tab=${ECLAIR_reports_tab} \
-  ECLAIR_summary_txt=${ECLAIR_summary_txt} \
-  ECLAIR_summary_doc=${ECLAIR_summary_doc} \
-  ECLAIR_summary_odt=${ECLAIR_summary_odt} \
-  ECLAIR_full_txt_areas=${ECLAIR_full_txt_areas} \
-  ECLAIR_full_txt=${ECLAIR_full_txt} \
-  ECLAIR_full_doc_areas=${ECLAIR_full_doc_areas} \
-  ECLAIR_full_doc=${ECLAIR_full_doc} \
-  ECLAIR_full_odt=${ECLAIR_full_odt} \
-  ${ECLAIR_REPORT} \
-  -eval_file=${ECLAIR_ECL_DIR}/reports.ecl \
-  | tee ${ECLAIR_OUTPUT_DIR}/report.log"
-  COMMAND ${ECLAIR_REPORT} -db=${ECLAIR_PROJECT_ECD} -overall_txt=/dev/stdin
+  COMMAND ${CMAKE_COMMAND} -E env
+    ECLAIR_PROJECT_NAME=${ECLAIR_PROJECT_NAME}
+    ECLAIR_PROJECT_ROOT=${ZEPHYR_BASE}
+    ECLAIR_DIAGNOSTICS_OUTPUT=${ECLAIR_DIAGNOSTICS_OUTPUT}
+    ECLAIR_DATA_DIR=${ECLAIR_DATA_DIR}
+    ECLAIR_RULES_SET=${ECLAIR_RULES_SET}
+    CC_ALIASES=${CC_ALIASES}
+    CXX_ALIASES=${CXX_ALIASES}
+    AS_ALIASES=${AS_ALIASES}
+    LD_ALIASES=${LD_ALIASES}
+    AR_ALIASES=${AR_ALIASES}
+    --
+    ${ECLAIR_ENV}
+    -verbose
+    -eval_file=${ECLAIR_ECL_DIR}/analysis.ecl
+    -- west build -p always
+                  -b ${BOARD}
+                  --build-dir ${ECLAIR_BUILD_DIR}
+                  ${APPLICATION_SOURCE_DIR}
+  COMMAND ${CMAKE_COMMAND} -E env
+    ECLAIR_DATA_DIR=${ECLAIR_DATA_DIR}
+    ECLAIR_OUTPUT_DIR=${ECLAIR_OUTPUT_DIR}
+    ECLAIR_PROJECT_ECD=${ECLAIR_PROJECT_ECD}
+    ECLAIR_metrics_tab=${ECLAIR_metrics_tab}
+    ECLAIR_reports_tab=${ECLAIR_reports_tab}
+    ECLAIR_summary_txt=${ECLAIR_summary_txt}
+    ECLAIR_summary_doc=${ECLAIR_summary_doc}
+    ECLAIR_summary_odt=${ECLAIR_summary_odt}
+    ECLAIR_full_txt_areas=${ECLAIR_full_txt_areas}
+    ECLAIR_full_txt=${ECLAIR_full_txt}
+    ECLAIR_full_doc_areas=${ECLAIR_full_doc_areas}
+    ECLAIR_full_doc=${ECLAIR_full_doc}
+    ECLAIR_full_odt=${ECLAIR_full_odt}
+    --
+    ${ECLAIR_REPORT}
+    -eval_file=${ECLAIR_ECL_DIR}/reports.ecl
+  COMMAND ${ECLAIR_REPORT}
+    -db=${ECLAIR_PROJECT_ECD}
+    -overall_txt=${ECLAIR_OUTPUT_DIR}/overall.txt
+  COMMAND ${CMAKE_COMMAND} -E
+    cat ${ECLAIR_OUTPUT_DIR}/overall.txt
   VERBATIM
   USES_TERMINAL
   COMMAND_EXPAND_LISTS
