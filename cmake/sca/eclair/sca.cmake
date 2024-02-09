@@ -25,15 +25,17 @@ if(NOT ECLAIR_RULES_SET)
   set(ECLAIR_RULES_SET first_analysis)
 endif()
 
-# Create Output Directory
-file(REMOVE_RECURSE ${ECLAIR_OUTPUT_DIR})
-file(MAKE_DIRECTORY ${ECLAIR_OUTPUT_DIR})
-file(MAKE_DIRECTORY ${ECLAIR_DATA_DIR})
 message(STATUS "ECLAIR outputs have been written to: ${ECLAIR_OUTPUT_DIR}")
 message(STATUS "ECLAIR ECB files have been written to: ${ECLAIR_DATA_DIR}")
 message(STATUS "ECLAIR BUILD DIR is: ${ECLAIR_BUILD_DIR}")
 
 add_custom_target(eclair ALL
+  COMMAND ${CMAKE_COMMAND} -E
+    rm -rf ${ECLAIR_OUTPUT_DIR}
+  COMMAND ${CMAKE_COMMAND} -E
+    make_directory ${ECLAIR_OUTPUT_DIR}
+  COMMAND ${CMAKE_COMMAND} -E
+    make_directory ${ECLAIR_DATA_DIR}
   COMMAND ${CMAKE_COMMAND} -E env
     ECLAIR_PROJECT_NAME=${ECLAIR_PROJECT_NAME}
     ECLAIR_PROJECT_ROOT=${ZEPHYR_BASE}
