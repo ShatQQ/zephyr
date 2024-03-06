@@ -41,7 +41,7 @@ if (ECLAIR_CONFIG)
     set(ECLAIR_RULES_SET STU_heavy)
   endif()
   if (CONFIG_ECLAIR_RULES_SET_WP)
-    set(ECLAIR_RULES_SETWP )
+    set(ECLAIR_RULES_SET WP)
   endif()
   if (CONFIG_ECLAIR_RULES_SET_std_lib)
     set(ECLAIR_RULES_SET std_lib)
@@ -91,7 +91,7 @@ message(STATUS "ECLAIR BUILD DIR is: ${ECLAIR_BUILD_DIR}")
 
 add_custom_target(eclair ALL
   COMMAND ${CMAKE_COMMAND} -E
-    rm -rf ${ECLAIR_OUTPUT_DIR}
+    remove_directory ${ECLAIR_OUTPUT_DIR}
   COMMAND ${CMAKE_COMMAND} -E
     make_directory ${ECLAIR_OUTPUT_DIR}
   COMMAND ${CMAKE_COMMAND} -E
