@@ -1,0 +1,51 @@
+name: "Eclair Guideline Check Test"
+on: push
+
+jobs:
+  Analyze:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          path: zephyr
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: west setup
+        working-directory: zephyr
+        run: |
+          pip3 install west
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+          west init -l . || true
+          west update
+
+      - name: Build and analyze with ECLAIR
+        working-directory: zephyr
+        shell: bash
+        run: |
+          pip install -r ./scripts/requirements.txt
+          forwardPorts
+          postStart
+          detachLicense 86400
+          west build -b qemu_x86 samples/hello_world -- -DZEPHYR_SCA_VARIANT=eclair -DEXTRA_CONF_FILE=$(pwd)/cmake/sca/eclair/eclair.config
+          returnLicense
+
+      - name: Upload ECLAIR artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts
+          path: |
+            zephyr/build/sca/eclair_out*/
+            !zephyr/build/sca/eclair_out*/build
+
+      - name: Upload ECLAIR SARIF
+        uses: BUGSENG/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: zephyr/build/sca/eclair_out/reports.sarif
+          category: "eclair-analysis"
