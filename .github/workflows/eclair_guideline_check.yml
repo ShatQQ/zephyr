@@ -33,7 +33,7 @@ jobs:
           forwardPorts
           postStart
           detachLicense 86400
-          west build -b qemu_x86 samples/hello_world -- -DZEPHYR_SCA_VARIANT=eclair -DEXTRA_CONF_FILE=$(pwd)/cmake/sca/eclair/eclair.config
+          west build -b nrf52dk/nrf52805 samples/basic/blinky --sysbuild -- -DZEPHYR_SCA_VARIANT=eclair -DEXTRA_CONF_FILE=$(pwd)/cmake/sca/eclair/eclair.config
           returnLicense
 
       - name: Upload ECLAIR artifacts
