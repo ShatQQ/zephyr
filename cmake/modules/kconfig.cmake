@@ -59,6 +59,21 @@ foreach(root ${kconfig_board_root})
   set(OPERATION APPEND)
 endforeach()
 
+# Support Static code anlayzer (SCA) Kconfig directory and search in SCA_ROOT
+zephyr_get(ZEPHYR_SCA_VARIANT)
+if(ZEPHYR_SCA_VARIANT)
+  # SCA root support multiple entries, add ZEPHYR_BASE as lowest priority
+  # 'SCA_ROOT' is a prioritized list of directories where SCA tools may
+  # be found. It always includes ${ZEPHYR_BASE} at the lowest priority.
+  list(APPEND SCA_ROOT ${ZEPHYR_BASE})
+  foreach(sca_root_path ${SCA_ROOT})
+    if(EXISTS ${sca_root_path}/cmake/sca/${ZEPHYR_SCA_VARIANT})
+      set(SCA_KCONFIG_DIR ${sca_root_path}/cmake/sca/${ZEPHYR_SCA_VARIANT})
+      break()
+    endif()
+  endforeach()
+endif()
+
 if(KCONFIG_ROOT)
   # Perform any variable substitutions if they are present
   string(CONFIGURE "${KCONFIG_ROOT}" KCONFIG_ROOT)
@@ -167,7 +182,7 @@ set(COMMON_KCONFIG_ENV_SETTINGS
   TOOLCHAIN_HAS_NEWLIB=${_local_TOOLCHAIN_HAS_NEWLIB}
   TOOLCHAIN_HAS_PICOLIBC=${_local_TOOLCHAIN_HAS_PICOLIBC}
   EDT_PICKLE=${EDT_PICKLE}
-  ZEPHYR_SCA_VARIANT=${ZEPHYR_SCA_VARIANT}
+  SCA_KCONFIG_DIR=${SCA_KCONFIG_DIR}
   # Export all Zephyr modules to Kconfig
   ${ZEPHYR_KCONFIG_MODULES_DIR}
 )

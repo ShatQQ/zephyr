@@ -2,10 +2,6 @@
 #
 # Copyright (c) 2022, Nordic Semiconductor ASA
 
-# 'SCA_ROOT' is a prioritized list of directories where SCA tools may
-# be found. It always includes ${ZEPHYR_BASE} at the lowest priority.
-list(APPEND SCA_ROOT ${ZEPHYR_BASE})
-
 zephyr_get(ZEPHYR_SCA_VARIANT)
 
 if(ScaTools_FIND_REQUIRED AND NOT DEFINED ZEPHYR_SCA_VARIANT)
