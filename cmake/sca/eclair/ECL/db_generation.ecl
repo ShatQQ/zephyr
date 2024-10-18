@@ -16,9 +16,6 @@ if(file_exists(ecd_file),
    db(ecd_file),
  create_db(ecd_file))
 
-server_root("")
-server("changing")
-
 setq(loaded_dir,join_paths(data_dir,"loaded"))
 make_dirs(loaded_dir)
 
@@ -29,5 +26,3 @@ strings_map("load_ecb",500,"",".*",0)
 loading()
 map_strings("load_ecb", dir_entries(data_dir))
 loaded()
-
-server("changed")

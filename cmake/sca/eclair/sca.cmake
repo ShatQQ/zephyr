@@ -8,14 +8,14 @@ message(STATUS "Found eclair_env: ${ECLAIR_ENV}")
 find_program(ECLAIR_REPORT eclair_report REQUIRED)
 message(STATUS "Found eclair_report: ${ECLAIR_REPORT}")
 
+
 # ECLAIR Settings
 set(ECLAIR_PROJECT_NAME "Zephyr-${BOARD}${BOARD_QUALIFIERS}")
-set(ECLAIR_OUTPUT_DIR ${CMAKE_BINARY_DIR}/sca/eclair_out)
+set(ECLAIR_OUTPUT_DIR "${CMAKE_BINARY_DIR}/sca/eclair_out")
 set(ECLAIR_ECL_DIR "${ZEPHYR_BASE}/cmake/sca/eclair/ECL")
 set(ECLAIR_ANALYSIS_ECL_DIR "${ZEPHYR_BASE}/cmake/sca/eclair/ECL")
 set(ECLAIR_DIAGNOSTICS_OUTPUT "${ECLAIR_OUTPUT_DIR}/DIAGNOSTIC.txt")
 set(ECLAIR_DATA_DIR "${ECLAIR_OUTPUT_DIR}/data")
-set(ECLAIR_BUILD_DIR "${ECLAIR_OUTPUT_DIR}/build")
 set(ECLAIR_PROJECT_ECD "${ECLAIR_OUTPUT_DIR}/PROJECT.ecd")
 set(CC_ALIASES "${CMAKE_C_COMPILER}")
 set(CXX_ALIASES "${CMAKE_CXX_COMPILER}")
@@ -96,48 +96,38 @@ endif()
 
 message(STATUS "ECLAIR outputs have been written to: ${ECLAIR_OUTPUT_DIR}")
 message(STATUS "ECLAIR ECB files have been written to: ${ECLAIR_DATA_DIR}")
-message(STATUS "ECLAIR BUILD DIR is: ${ECLAIR_BUILD_DIR}")
 
-add_custom_target(eclair ALL
-  COMMAND ${CMAKE_COMMAND} -E
-    remove_directory ${ECLAIR_OUTPUT_DIR}
-  COMMAND ${CMAKE_COMMAND} -E
-    make_directory ${ECLAIR_OUTPUT_DIR}
-  COMMAND ${CMAKE_COMMAND} -E
-    make_directory ${ECLAIR_DATA_DIR}
-  COMMAND ${CMAKE_COMMAND} -E env
-    ECLAIR_DIAGNOSTICS_OUTPUT=${ECLAIR_DIAGNOSTICS_OUTPUT}
-    ECLAIR_DATA_DIR=${ECLAIR_DATA_DIR}
-    CC_ALIASES=${CC_ALIASES}
-    CXX_ALIASES=${CXX_ALIASES}
-    AS_ALIASES=${AS_ALIASES}
-    LD_ALIASES=${LD_ALIASES}
-    AR_ALIASES=${AR_ALIASES}
-    ${ECLAIR_ENV}
-    -verbose
-    -project_name=${ECLAIR_PROJECT_NAME}
-    -project_root=${ZEPHYR_BASE}
-    -eval_file=${ECLAIR_ECL_DIR}/analysis.ecl
-    -eval_file=${ECLAIR_ANALYSIS_ECL_DIR}/analysis_${ECLAIR_RULESET}.ecl
-    ${ECLAIR_ENV_ADDITIONAL_OPTIONS}
-    -- west build -p always
-                  -b ${BOARD}${BOARD_QUALIFIERS}
-                  --build-dir ${ECLAIR_BUILD_DIR}
-                  ${APPLICATION_CONFIG_DIR}
+execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${ECLAIR_OUTPUT_DIR}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${ECLAIR_OUTPUT_DIR}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${ECLAIR_DATA_DIR}
+  COMMAND_ERROR_IS_FATAL ANY
+  COMMAND_ECHO STDOUT
+)
+
+# configure the camke script which will be used to replace the compiler call with the eclair_env
+# call which calls the compiler and to generate analysis files.
+configure_file(${CMAKE_CURRENT_LIST_DIR}/eclair.template ${CMAKE_BINARY_DIR}/eclair.cmake @ONLY)
+
+set(launch_environment ${CMAKE_COMMAND} -P ${CMAKE_BINARY_DIR}/eclair.cmake --)
+set(CMAKE_C_COMPILER_LAUNCHER ${launch_environment} CACHE INTERNAL "")
+
+# This target is used to generate the ECLAIR database when all the compilation is done and the
+# elf file was generated with this we cane make sure that the analysis is completed.
+add_custom_target(eclair_report ALL
   COMMAND ${CMAKE_COMMAND} -E env
     ECLAIR_DATA_DIR=${ECLAIR_DATA_DIR}
     ECLAIR_OUTPUT_DIR=${ECLAIR_OUTPUT_DIR}
     ECLAIR_PROJECT_ECD=${ECLAIR_PROJECT_ECD}
-    ${ECLAIR_REPORT}
-    -quiet
-    -eval_file=${ECLAIR_ECL_DIR}/db_generation.ecl
-  COMMAND ${ECLAIR_REPORT}
-    -db=${ECLAIR_PROJECT_ECD}
-    ${ECLAIR_REPORT_ADDITIONAL_OPTIONS}
-    -overall_txt=${ECLAIR_OUTPUT_DIR}/overall.txt
-  COMMAND ${CMAKE_COMMAND} -E
-    cat ${ECLAIR_OUTPUT_DIR}/overall.txt
+    ${ECLAIR_REPORT} -quiet -eval_file=${ECLAIR_ECL_DIR}/db_generation.ecl
+  DEPENDS ${CMAKE_BINARY_DIR}/zephyr/zephyr.elf
   VERBATIM
   USES_TERMINAL
   COMMAND_EXPAND_LISTS
+)
+
+# This command is used to generate the final reports from the database and print the overall results
+add_custom_command(
+  TARGET eclair_report POST_BUILD
+  COMMAND ${ECLAIR_REPORT} -db=${ECLAIR_PROJECT_ECD} ${ECLAIR_REPORT_ADDITIONAL_OPTIONS} -overall_txt=${ECLAIR_OUTPUT_DIR}/overall.txt
+  COMMAND ${CMAKE_COMMAND} -E cat ${ECLAIR_OUTPUT_DIR}/overall.txt
 )
